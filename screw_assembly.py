@@ -4,6 +4,7 @@ the bar seated in its cradle."""
 
 from build123d import Compound, Plane, Pos, Rotation, mirror
 
+import button_cap as bc
 import insert as ins
 import m2_screw as ps
 import speaker_badge as sb
@@ -54,6 +55,13 @@ def gen_step():
            * Pos(0, 0, -wb.LEN / 2) * wb.gen_step())
     bar.label = "wrap_bar"
     children.append(bar)
+    # Button caps seated in their front-face holes: the head sits proud on the
+    # outer face (native z<0 side), the stem passes through the Ø7 hole. The
+    # first button_centers() entry is the CENTER (flangeless) cap.
+    for i, (bx, by) in enumerate(sb.button_centers()):
+        cap = Pos(bx, by, -bc.HEAD_H) * bc.make_cap(center=(i == 0))
+        cap.label = f"button_cap_{'center' if i == 0 else i}"
+        children.append(cap)
     return Compound(label="screw_assembly", children=children)
 
 

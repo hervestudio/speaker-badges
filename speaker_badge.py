@@ -2,8 +2,8 @@
 
 Outer: 54 x 105 x 14.5 mm. Round body bulge follows the screen. A webbing strap
 threads through a slot on the top face and loops around an internal bar (no clips
-or screws). USB-C exits the bottom edge, the micro SD slot the left edge, and two
-tactile buttons the right edge.
+or screws). USB-C exits the right edge, the micro SD slot the left edge. Three
+buttons sit on the front face, on an arc following the screen's lower curve.
 
 The shell splits evenly at the mid-plane: the FRONT shell holds the front
 layer (screen + adapter, TP4056, SD); the BACK shell holds the back layer
@@ -17,8 +17,10 @@ Bill of materials (see component_layout.py for the in-case fit check):
   - LiPo 503040, 40 x 30 x 5 mm, 600 mAh
   - TP4056 + 5V boost, USB-C, 18 x 23.6 mm  (the charge port)
   - micro SD module, 17.8 x 17.9 mm
-  - tactile side switch
+  - 3 tactile buttons with printed caps (button_cap.py)
 """
+
+import math
 
 from build123d import (
     Align,
@@ -33,7 +35,6 @@ from build123d import (
     Rectangle,
     RectangleRounded,
     Rotation,
-    SlotOverall,
     chamfer,
     extrude,
     fillet,
@@ -117,24 +118,33 @@ BOSS_OD = 5.0              # ≥0.9 mm wall around the insert; merges into the p
 # about the vertical (Y) axis to close the case, which swaps X (left<->right), so
 # its cuts are mirrored in X and use native z = TOTAL_T - global z. (A flip, not a
 # reflection — you can't print a mirrored part.)
-USB_GZ = TOTAL_T / 2       # USB-C centered in the thickness
-USB_W = 11.0               # opening width (along X)
+USB_GZ = TOTAL_T / 2       # centered in the thickness (straddles the seam)
+USB_CY = -35.0             # height on the RIGHT (+X) edge — follows the TP4056 center
+                           # (the USB-C connector is on that board).
+USB_W = 11.0               # opening width (now along Y — the connector width)
 USB_H = 6.5                # opening height (along Z) — clears the plug overmold
-USB_CX = 1.0               # USB-C is left-offset on the TP4056 board (per datasheet),
-                           # not centered — opening tracks the connector, not TP_CXY[0]
 
 SD_GZ = 5.0                # SD card-slot height (SD module seats near the front)
 SD_CY = -32.0              # aligned to the SD module center (SD_CXY[1])
 SD_SLOT_W = 13.0           # along Y (card width)
 SD_SLOT_H = 3.0            # along Z
 
-# --- Buttons: two recessed vertical pills on the right edge (dYdX-style) ---
-BTN_GZ = TOTAL_T / 2       # centered in the thickness
-BTN_LEN = 9.0              # pill length (along Y)
-BTN_WID = 4.0              # pill width (along Z)
-BTN_CHAN_DEPTH = 0.8       # recessed channel depth in the side wall
-BTN1_CY = -15.0
-BTN2_CY = -26.0
+# --- Front-face buttons (3 equal caps on an arc following the screen curve) ---
+# THROUGH-HOLES only; the caps print separately and drop in (see button_cap.py).
+# Through-holes don't bridge, so the lid still prints face-down with no support.
+# Centers lie on a circle of radius BTN_ARC_R about the screen center; the side
+# pair sits BTN_ARC_ANG up from bottom-dead-center, so the trio follows the curve.
+# Fit check (component_layout / the design notes): the two side buttons clear the
+# TP4056 + SD boards by ~2 mm with a full 6x6 switch; the CENTER button sits over
+# the TP4056 corner, so the board is nudged down (TP_CXY) and the center wants a
+# compact (<=4x4) switch behind it.
+BTN_HOLE_DIA = 7.0         # cap-stem through-hole (the visible opening)
+BTN_CAP_HEAD = 9.0         # proud cap head Ø (identical for all three)
+BTN_ARC_R = 31.0           # arc radius measured from the screen center (0, SCREEN_CY)
+BTN_ARC_ANG = 38.0         # side buttons sit this many degrees up from bottom
+BTN_FLANGE_CLEAR = 9.0     # pocket walls are notched to this Ø around the SIDE caps
+                           # so their Ø8 snap flange (button_cap.py) clears — the SD
+                           # +y wall otherwise grazes the left flange by ~0.7 mm
 
 # --- Internal retention (printed pockets/ribs; screen on a ledge + foam) ---
 RIB_T = 1.6                # pocket / rib wall thickness
@@ -151,7 +161,10 @@ GLASS_RING_H = T_FRONT - WALL - POCKET_GAP   # ring stays short of the seam
 # Module footprints (X, Y) and pocket centers (shared by both shells in XY)
 ESP_W, ESP_H, ESP_CXY = 28.2, 64.4, (0.0, 12.8)      # back layer; top registers on header ceiling (4.8 mm thick)
 BAT_W, BAT_H, BAT_CXY = 40.0, 30.0, (0.0, -35.7)     # back layer; bottom rests on perimeter wall
-TP_W, TP_H, TP_CXY = 18.0, 23.6, (4.0, -35.0)        # front layer; rests against SD's divider wall
+TP_W, TP_H, TP_CXY = 23.6, 18.0, (13.4, -35.0)       # front layer, lower-right, ROTATED 90°
+                                                     # so its USB-C faces the right edge.
+                                                     # Nudged 3 mm down (-32 -> -35) so its
+                                                     # top corner clears the center button.
 SD_W, SD_H, SD_CXY = 17.8, 17.9, (-15.8, -32.0)      # front layer; -x registers on left perimeter
 
 
@@ -205,9 +218,10 @@ def _glass_ring():
 
 
 def _usb_cut(z):
-    """USB-C opening through the bottom edge, centered at local z."""
-    return Pos(USB_CX, -H / 2, z) * extrude(
-        Plane.XZ * RectangleRounded(USB_W, USB_H, 1.0), WALL * 2, both=True
+    """USB-C opening through the RIGHT (+X) edge, at local z (thickness). Moved off
+    the bottom edge so the wraparound label can run across the bottom + back."""
+    return Pos(W / 2, USB_CY, z) * extrude(
+        Plane.YZ * RectangleRounded(USB_W, USB_H, 1.0), WALL * 2, both=True
     )
 
 
@@ -218,26 +232,41 @@ def _sd_cut(z):
     )
 
 
-def _button_cuts(z):
-    """Two pill buttons + their recessed channel on the right edge, centered at local z."""
-    btn_mid = (BTN1_CY + BTN2_CY) / 2
-    chan_len = abs(BTN1_CY - BTN2_CY) + BTN_LEN + 3.0
-    cut = Pos(W / 2, btn_mid, z) * extrude(
-        Plane.YZ * RectangleRounded(chan_len, BTN_WID + 4.0, 2.0), -BTN_CHAN_DEPTH
-    )
-    for cy in (BTN1_CY, BTN2_CY):
-        cut += Pos(W / 2, cy, z) * extrude(
-            Plane.YZ * SlotOverall(BTN_LEN, BTN_WID), WALL * 1.5, both=True
-        )
-    return cut
+def button_centers():
+    """The three button-cap centers (XY), on an arc below the screen: center button
+    at bottom-dead-center, side pair BTN_ARC_ANG up from it. Shared by the shell
+    holes and the cap placement (button_cap.py / the assembled views)."""
+    a = math.radians(BTN_ARC_ANG)
+    cx, cy = 0.0, SCREEN_CY
+    return [
+        (cx, cy - BTN_ARC_R),                                          # center (lowest)
+        (cx + BTN_ARC_R * math.sin(a), cy - BTN_ARC_R * math.cos(a)),   # right
+        (cx - BTN_ARC_R * math.sin(a), cy - BTN_ARC_R * math.cos(a)),   # left
+    ]
+
+
+def _button_holes():
+    """Three equal Ø7 cap through-holes on the arc (front face, native z=0)."""
+    holes = [Pos(bx, by, 0) * extrude(Circle(BTN_HOLE_DIA / 2), T_FRONT)
+             for bx, by in button_centers()]
+    out = holes[0]
+    for h in holes[1:]:
+        out += h
+    return out
+
+
+def _cavity_solid(thickness):
+    """The hollow interior volume (the region subtracted to form the cavity). Used
+    both to carve the shell and to CLIP internal pocket walls/ribs, so no internal
+    feature can ever extend past the perimeter wall to the outer surface."""
+    return Pos(0, 0, WALL) * extrude(_cavity_sketch(), thickness - WALL + 0.01)
 
 
 def _shell_body(thickness):
     """Outer block with rounded exterior edge and a header-clipped cavity."""
     solid = extrude(_outer_sketch(), thickness)
     solid = fillet(solid.edges().group_by(Axis.Z)[0], radius=EDGE_FILLET)
-    cavity = Pos(0, 0, WALL) * extrude(_cavity_sketch(), thickness - WALL + 0.01)
-    return solid - cavity
+    return solid - _cavity_solid(thickness)
 
 
 def _add_strap_mount(solid, t):
@@ -296,15 +325,30 @@ def front_shell():
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
 
-    # Screen locating ring + front-layer module pockets (walls stop short of seam)
+    # Screen locating ring + front-layer module pockets (walls stop short of seam).
+    # Pocket walls are CLIPPED to the cavity so the corner-overlap padding can't push
+    # a wall past the perimeter and poke out the outer edge face.
+    cav = _cavity_solid(T_FRONT)
     solid += _glass_ring()
-    solid += _walls(TP_W, TP_H, TP_CXY, WALL, FRONT_POCKET_TOP, ["+x", "+y"])         # USB exits -Y; rests on SD's +x divider
-    solid += _walls(SD_W, SD_H, SD_CXY, WALL, FRONT_POCKET_TOP, ["+x", "+y", "-y"])  # +x is the shared divider; card exits -X (perimeter)
+    solid += _walls(TP_W, TP_H, TP_CXY, WALL, FRONT_POCKET_TOP, ["-x", "+y", "-y"]) & cav  # USB exits +X; bracketed inboard + top/bottom
+    solid += _walls(SD_W, SD_H, SD_CXY, WALL, FRONT_POCKET_TOP, ["+x", "+y", "-y"]) & cav  # card exits -X (left perimeter)
+    # Notch the pocket walls around the SIDE caps so their snap flange (which
+    # springs past the Ø7 hole onto the inner wall face) has room to seat. The
+    # notch cylinders start above the floor and stay clear of the glass ring and
+    # perimeter wall, so only wall material in the flange's path is removed.
+    # (NB: subtract from `solid`, not from the `& cav` result — that is a
+    # ShapeList, whose -= is a list set-difference, not a boolean cut.)
+    for bx, by in button_centers()[1:]:
+        solid -= Pos(bx, by, WALL) * extrude(
+            Circle(BTN_FLANGE_CLEAR / 2), FRONT_POCKET_TOP - WALL
+        )
 
-    # Edge ports / buttons (this shell's portion; local z = global z)
+    # Edge ports (this shell's portion; local z = global z)
     solid -= _usb_cut(USB_GZ)
     solid -= _sd_cut(SD_GZ)
-    solid -= _button_cuts(BTN_GZ)
+
+    # Three button cap holes on an arc below the screen (caps drop in — button_cap.py).
+    solid -= _button_holes()
 
     # Top-face strap slot + wrap-bar cradle
     solid = _add_strap_mount(solid, T_FRONT)
@@ -330,8 +374,10 @@ def back_shell():
     # Back-layer module pockets (walls stop short of seam). ESP and battery
     # face each other across a clear gap with no divider — the gap doubles as
     # the JST-lead route. ESP top registers on the header ceiling; the battery
-    # bottom rests on the perimeter wall.
-    solid += _walls(ESP_W, ESP_H, ESP_CXY, WALL, BACK_POCKET_TOP, ["+x", "-x"])
+    # bottom rests on the perimeter wall. Walls/ribs are CLIPPED to the cavity so
+    # the corner-overlap padding can't poke through the perimeter to the outside.
+    cav = _cavity_solid(T_BACK)
+    solid += _walls(ESP_W, ESP_H, ESP_CXY, WALL, BACK_POCKET_TOP, ["+x", "-x"]) & cav
 
     # Battery side ribs (+x / -x). Built explicitly rather than via _walls, and
     # stopped ~4 mm ABOVE the bottom insert bosses so the ribs don't run down
@@ -343,16 +389,16 @@ def back_shell():
     rib_top = BAT_CXY[1] + BAT_H / 2 + FIT_CLEAR + RIB_T          # +y end (matches _walls)
     rib_bot = -(H / 2 - SCREW_INSET) + BOSS_OD / 2 + 4.0          # ~4 mm above the bosses
     for sx in (-1, 1):
-        solid += Pos(sx * rib_x, (rib_top + rib_bot) / 2, (WALL + BACK_POCKET_TOP) / 2) * Box(
+        rib = Pos(sx * rib_x, (rib_top + rib_bot) / 2, (WALL + BACK_POCKET_TOP) / 2) * Box(
             RIB_T, rib_top - rib_bot, BACK_POCKET_TOP - WALL
         )
+        solid += rib & cav
 
-    # Edge ports / buttons. The back shell is flipped about Y when the case closes
-    # (x -> -x), so its cuts are MIRRORED in X (about the YZ plane) to line up with
-    # the front shell's ports after the flip. Native z = TOTAL_T - global z.
+    # Edge ports. The back shell is flipped about Y when the case closes (x -> -x),
+    # so its cuts are MIRRORED in X (about the YZ plane) to line up with the front
+    # shell's ports after the flip. Native z = TOTAL_T - global z.
     solid -= mirror(_usb_cut(TOTAL_T - USB_GZ), about=Plane.YZ)
     solid -= mirror(_sd_cut(TOTAL_T - SD_GZ), about=Plane.YZ)
-    solid -= mirror(_button_cuts(TOTAL_T - BTN_GZ), about=Plane.YZ)
 
     # Top-face strap slot + wrap-bar cradle
     solid = _add_strap_mount(solid, T_BACK)

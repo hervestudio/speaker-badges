@@ -9,6 +9,7 @@ screws (drop in from the screen face). Component bodies are simplified placehold
 
 from build123d import Box, Compound, Cylinder, Plane, Pos, Rotation, mirror
 
+import button_cap as bc
 import insert as ins
 import m2_screw as ms
 import speaker_badge as sb
@@ -74,6 +75,13 @@ def gen_step():
         part = Pos(cx, cy, 88) * screw
         part.label = f"screw_{i}"
         parts.append(part)
+
+    # Button caps above their holes (head up, stem pointing down into the lid).
+    # The shell is flipped about Y, so hole x flips too; first entry = CENTER cap.
+    for i, (bx, by) in enumerate(sb.button_centers()):
+        cap = Pos(-bx, by, 88) * Rotation(0, 180, 0) * bc.make_cap(center=(i == 0))
+        cap.label = f"button_cap_{'center' if i == 0 else i}"
+        parts.append(cap)
 
     return Compound(label="badge_exploded", children=parts)
 
