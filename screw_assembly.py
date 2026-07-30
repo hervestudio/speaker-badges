@@ -85,8 +85,8 @@ def _components():
     """The electronics, as simplified placeholder bodies in their seated
     positions (global frame: front face z=0, seam z=T_FRONT, back z=TOTAL_T).
 
-    FRONT layer stacks off the front-shell floor (z=WALL): the AMOLED glass
-    rests on the bezel lip, its adapter board directly behind it; the TP4056
+    FRONT layer stacks off the front-shell floor (z=WALL): the TFT glass
+    rests on the bezel lip with its carrier PCB directly behind it; the TP4056
     and SD boards sit on the floor. BACK layer stacks off the back-shell
     floor, which lands at z = TOTAL_T - WALL once the shell is flipped: the
     ESP32 and battery hang from it toward the seam. XY centers come straight
@@ -99,14 +99,24 @@ def _components():
         part.label = label
         return part
 
-    glass_t, adapter_t, board_t, esp_t, bat_t = 2.21, 3.1, 4.0, 4.8, 5.0
+    board_t, esp_t, bat_t = 4.0, 4.8, 5.0
     back_floor = sb.TOTAL_T - sb.WALL
 
-    glass = Pos(0, sb.SCREEN_CY, sb.WALL + glass_t / 2) * Cylinder(48.4 / 2, glass_t)
-    glass.label = "amoled_glass"
+    # 2.1" TFT module: glass disc bonded on a round PCB with a connector tab.
+    glass = (Pos(0, sb.SCREEN_CY, sb.WALL + sb.TFT_GLASS_T / 2)
+             * Cylinder(sb.TFT_GLASS_DIA / 2, sb.TFT_GLASS_T))
+    glass.label = "tft_glass"
+    pcb_z = sb.WALL + sb.TFT_GLASS_T
+    pcb = (Pos(0, sb.SCREEN_CY, pcb_z + sb.TFT_PCB_T / 2)
+           * Cylinder(sb.TFT_PCB_DIA / 2, sb.TFT_PCB_T))
+    tab_h = sb.TFT_PCB_H - sb.TFT_PCB_DIA
+    tab_cy = sb.SCREEN_CY - sb.TFT_PCB_DIA / 2 - tab_h / 2 + 1.0  # 1 mm overlap into the disc
+    pcb += (Pos(0, tab_cy, pcb_z + sb.TFT_PCB_T / 2)
+            * Box(sb.TFT_TAB_W, tab_h + 2.0, sb.TFT_PCB_T))
+    pcb.label = "tft_pcb"
     return [
         glass,
-        _box(50, 50, adapter_t, 0, sb.SCREEN_CY, sb.WALL + glass_t, "screen_adapter"),
+        pcb,
         _box(sb.TP_W, sb.TP_H, board_t, *sb.TP_CXY, sb.WALL, "tp4056_boost"),
         _box(sb.SD_W, sb.SD_H, board_t, *sb.SD_CXY, sb.WALL, "sd_module"),
         _box(sb.ESP_W, sb.ESP_H, esp_t, *sb.ESP_CXY, back_floor - esp_t, "esp32_s3"),

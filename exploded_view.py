@@ -52,16 +52,23 @@ def gen_step():
     parts.append(bar)
 
     # Back layer
-    parts.append(_box(sb.ESP_W, sb.ESP_H, 5.0, (0, 10, 26), "esp32_s3"))
-    parts.append(_box(sb.BAT_W, sb.BAT_H, 5.0, (0, -32, 26), "lipo_503040"))
+    parts.append(_box(sb.ESP_W, sb.ESP_H, 5.0, (*sb.ESP_CXY, 26), "esp32_s3"))
+    parts.append(_box(sb.BAT_W, sb.BAT_H, 5.0, (*sb.BAT_CXY, 26), "lipo_503040"))
 
     # Front layer
-    parts.append(_box(sb.TP_W, sb.TP_H, 5.0, (1.5, -35, 42), "tp4056_boost"))
-    parts.append(_box(sb.SD_W, sb.SD_H, 4.0, (-16, -32, 42), "sd_module"))
-    parts.append(_box(50, 50, 3.1, (0, SCY, 56), "screen_adapter"))
+    parts.append(_box(sb.TP_W, sb.TP_H, 5.0, (*sb.TP_CXY, 42), "tp4056_boost"))
+    parts.append(_box(sb.SD_W, sb.SD_H, 4.0, (*sb.SD_CXY, 42), "sd_module"))
 
-    glass = Pos(0, SCY, 64) * Cylinder(48.4 / 2, 2.21)
-    glass.label = "amoled_glass"
+    # 2.1" TFT module: round carrier PCB (+ connector tab), glass above it
+    pcb = Pos(0, SCY, 56) * Cylinder(sb.TFT_PCB_DIA / 2, sb.TFT_PCB_T)
+    tab_h = sb.TFT_PCB_H - sb.TFT_PCB_DIA
+    pcb += (Pos(0, SCY - sb.TFT_PCB_DIA / 2 - tab_h / 2 + 1.0, 56)
+            * Box(sb.TFT_TAB_W, tab_h + 2.0, sb.TFT_PCB_T))
+    pcb.label = "tft_pcb"
+    parts.append(pcb)
+
+    glass = Pos(0, SCY, 64) * Cylinder(sb.TFT_GLASS_DIA / 2, sb.TFT_GLASS_T)
+    glass.label = "tft_glass"
     parts.append(glass)
 
     # Front shell, flipped about Y (as it closes onto the back) so the screen faces up

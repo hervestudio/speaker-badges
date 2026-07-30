@@ -1,19 +1,22 @@
-"""Speaker badge enclosure — portrait two-piece shell.
+"""Speaker badge enclosure — portrait two-piece shell. v2: 2.1" screen.
 
-Outer: 54 x 105 x 14.5 mm. Round body bulge follows the screen. A webbing strap
-threads through a slot on the top face and loops around an internal bar (no clips
-or screws). USB-C exits the right edge, the micro SD slot the left edge. Three
-buttons sit on the front face, on an arc following the screen's lower curve.
+Outer: 64 x 124 x 14.5 mm — scaled from v1 (54 x 105) with the bigger screen to
+keep the same visual balance (H/W ~1.94, same relative bezel frame and margins).
+Round body bulge follows the screen. A webbing strap threads through a slot on
+the top face and loops around an internal bar (no clips or screws). USB-C exits
+the right edge, the micro SD slot the left edge. Three buttons sit on the front
+face, on an arc below the screen.
 
 The shell splits evenly at the mid-plane: the FRONT shell holds the front
-layer (screen + adapter, TP4056, SD); the BACK shell holds the back layer
+layer (screen module, TP4056, SD); the BACK shell holds the back layer
 (ESP32, battery). No internal shelf is needed. The mid-plane split also lets
 the USB-C opening and the strap slot/bar sit centered in the thickness.
 
 Bill of materials (see component_layout.py for the in-case fit check):
-  - AMOLED 1.73" round touch, glass Ø48.4 (Ø44.16 visible), 2.21 mm thick
-  - AMOLED adapter board (CO5300), ~50 x 50 mm
-  - ESP32-S3 N16R8 devkit, 28.2 x 64.4 x 4.8 mm (long board — drives the height)
+  - 2.1" round TFT, 360x360, on its own round PCB: glass Ø55.92, active area
+    Ø52.92, PCB Ø59.24 + connector tab (67.47 total) — replaces v1's 1.73"
+    AMOLED + separate 50x50 adapter board
+  - ESP32-S3 N16R8 devkit, 28.2 x 64.4 x 4.8 mm
   - LiPo 503040, 40 x 30 x 5 mm, 600 mAh
   - TP4056 + 5V boost, USB-C, 18 x 23.6 mm  (the charge port)
   - micro SD module, 17.8 x 17.9 mm
@@ -43,24 +46,29 @@ from build123d import (
 )
 
 # --- Outer envelope (portrait, with body bulge around screen) ---
-W = 54.0                   # base width (X); floor set by the 50 mm adapter + walls
-H = 105.0                  # body height (Y); sized so the 64.4 mm ESP + battery
-                           # stack fits in the cavity below the 7 mm header
+W = 64.0                   # base width (X); floor set by the Ø59.24 screen PCB +
+                           # walls (~0.3 mm/side — snug, like v1's adapter fit)
+H = 124.0                  # body height (Y); scaled with the 2.1" screen to keep
+                           # the v1 proportions (H/W ≈ 1.94). The ESP + battery
+                           # stack (95.7) now has slack in the 115.2 mm cavity.
 HEADER_H = 7.0             # solid top strip housing the strap slot + internal bar
-BULGE_DIA = 61.0           # body bulges ~3.5 mm proud of the base around the screen
-                           # for a more substantial side frame (~4.3 mm wall to the
-                           # glass ring) following the screen curve; base still 54
-                           # (holds the adapter), so the bulge is purely the surround
+BULGE_DIA = 72.0           # body bulges 4 mm proud of the base around the screen —
+                           # same frame width beyond the bezel as v1 (~7.7 mm),
+                           # scaled with the screen; base still 64 (holds the PCB)
 CORNER_R = 4.0             # smoothing radius for outer silhouette
-WALL = 1.8                 # thinned from 2.0 to keep adapter clearance at W=54
+WALL = 1.8                 # thinned from 2.0 in v1 for module clearance; kept
 T_FRONT = 7.25             # even split at the mid-plane (total 14.5 mm)
 T_BACK = 7.25
 TOTAL_T = T_FRONT + T_BACK
 CAVITY_TOP = H / 2 - HEADER_H   # cavity stops here; header above stays solid
 
-# --- Screen (1.73" round LCD, ~48.4 mm glass OD, 44.16 mm viewable) ---
-SCREEN_CUTOUT_DIA = 45.0   # covers the viewable area + small margin
-SCREEN_CY = 7.0            # below lanyard, sized to fit bulge
+# --- Screen (2.1" round TFT 360x360 module: glass bonded on its own PCB) ---
+# Per the "foot position chart": PCB Ø59.24 disc + a ~30.5 mm connector tab at
+# the bottom (total PCB height 67.47); LCM glass Ø55.92; active area Ø52.92.
+# AA / glass / PCB disc are concentric (side offsets are equal), so everything
+# centers on (0, SCREEN_CY); only the tab hangs below the disc.
+SCREEN_CUTOUT_DIA = 53.7   # covers the Ø52.92 active area + small margin
+SCREEN_CY = 8.0            # below lanyard, sized to fit bulge (v1 forehead ratio)
 
 # --- Bezel: 45° chamfer around the screen opening ---
 # A chamfer (not a flat recess) so the front shell prints FACE-DOWN with no
@@ -119,13 +127,13 @@ BOSS_OD = 5.0              # ≥0.9 mm wall around the insert; merges into the p
 # its cuts are mirrored in X and use native z = TOTAL_T - global z. (A flip, not a
 # reflection — you can't print a mirrored part.)
 USB_GZ = TOTAL_T / 2       # centered in the thickness (straddles the seam)
-USB_CY = -35.0             # height on the RIGHT (+X) edge — follows the TP4056 center
+USB_CY = -41.5             # height on the RIGHT (+X) edge — follows the TP4056 center
                            # (the USB-C connector is on that board).
 USB_W = 11.0               # opening width (now along Y — the connector width)
 USB_H = 6.5                # opening height (along Z) — clears the plug overmold
 
 SD_GZ = 5.0                # SD card-slot height (SD module seats near the front)
-SD_CY = -32.0              # aligned to the SD module center (SD_CXY[1])
+SD_CY = -41.5              # aligned to the SD module center (SD_CXY[1])
 SD_SLOT_W = 13.0           # along Y (card width)
 SD_SLOT_H = 3.0            # along Z
 
@@ -140,7 +148,10 @@ SD_SLOT_H = 3.0            # along Z
 # compact (<=4x4) switch behind it.
 BTN_HOLE_DIA = 7.0         # cap-stem through-hole (the visible opening)
 BTN_CAP_HEAD = 9.0         # proud cap head Ø (identical for all three)
-BTN_ARC_R = 31.0           # arc radius measured from the screen center (0, SCREEN_CY)
+BTN_ARC_R = 42.0           # arc radius measured from the screen center (0, SCREEN_CY).
+                           # Wider than a pure visual scale of v1: the 2.1" module's
+                           # PCB tab reaches y=-29.9, so the center button (and the
+                           # switch behind it) must sit fully below the tab.
 BTN_ARC_ANG = 38.0         # side buttons sit this many degrees up from bottom
 BTN_FLANGE_CLEAR = 9.0     # pocket walls are notched to this Ø around the SIDE caps
                            # so their Ø8 snap flange (button_cap.py) clears — the SD
@@ -154,21 +165,31 @@ POCKET_GAP = 0.8           # stop pocket walls short of the seam so the front an
 FRONT_POCKET_TOP = T_FRONT - POCKET_GAP
 BACK_POCKET_TOP = T_BACK - POCKET_GAP
 
-GLASS_DIA = 48.4
-GLASS_RING_ID = GLASS_DIA + 0.8         # locating-ring inner diameter
-GLASS_RING_H = 2.0         # just under the 2.21 glass thickness: the ring only
-                           # centers the glass radially; any taller and it hits
-                           # the 50 mm adapter board seated behind the glass
-                           # (adapter mid-edges at ±25 overlap the ring annulus)
+# Screen module (2.1" TFT). Thicknesses are ASSUMED (the foot-position chart
+# gives no Z data) — confirm against the full datasheet before printing:
+TFT_GLASS_DIA = 55.92      # LCM glass Ø (the bottom ledge to 57.58 is ignored by
+                           # the placeholder; the bezel lip only meets the circle)
+TFT_GLASS_T = 2.5          # ASSUMED typical TFT LCM thickness
+TFT_PCB_DIA = 59.24        # round PCB the glass is bonded to
+TFT_PCB_T = 1.6            # ASSUMED standard PCB
+TFT_PCB_H = 67.47          # total PCB height incl. the bottom connector tab
+TFT_TAB_W = 30.5           # tab width (23.88 connector zone + 2x3.3 shoulders)
+TFT_RING_ID = TFT_PCB_DIA + 0.56        # PCB locating-ring inner diameter
+# NB: the module's 10-pin P2.54 header solders through the tab — pin tails
+# protrude past the seam into the back cavity's ESP<->battery gap (open space).
+# Use a low-profile header or trim the tails.
 
 # Module footprints (X, Y) and pocket centers (shared by both shells in XY)
-ESP_W, ESP_H, ESP_CXY = 28.2, 64.4, (0.0, 12.8)      # back layer; top registers on header ceiling (4.8 mm thick)
-BAT_W, BAT_H, BAT_CXY = 40.0, 30.0, (0.0, -35.7)     # back layer; bottom rests on perimeter wall
-TP_W, TP_H, TP_CXY = 23.6, 18.0, (13.4, -35.0)       # front layer, lower-right, ROTATED 90°
-                                                     # so its USB-C faces the right edge.
-                                                     # Nudged 3 mm down (-32 -> -35) so its
-                                                     # top corner clears the center button.
-SD_W, SD_H, SD_CXY = 17.8, 17.9, (-15.8, -32.0)      # front layer; -x registers on left perimeter
+ESP_W, ESP_H, ESP_CXY = 28.2, 64.4, (0.0, 22.3)      # back layer; top registers on header ceiling (4.8 mm thick)
+BAT_W, BAT_H, BAT_CXY = 40.0, 30.0, (0.0, -45.2)     # back layer; bottom rests on perimeter wall
+TP_W, TP_H, TP_CXY = 23.6, 18.0, (17.9, -41.5)       # front layer, lower-right, ROTATED 90°
+                                                     # so its USB-C faces the right edge;
+                                                     # +x registers on the perimeter wall.
+                                                     # Low enough that the pocket's +y wall
+                                                     # (top + 2.1) clears the screen PCB's
+                                                     # tab, which hangs to y=-29.85.
+SD_W, SD_H, SD_CXY = 17.8, 17.9, (-20.8, -41.5)      # front layer; -x registers on left perimeter
+                                                     # (+y wall clears the PCB tab, as above)
 
 
 def _outer_sketch():
@@ -213,11 +234,22 @@ def _walls(w, h, center, z0, z1, sides, t=RIB_T, clear=FIT_CLEAR):
     return out
 
 
-def _glass_ring():
-    """Locating ring on the front-shell inner face that centers the AMOLED glass."""
-    outer = Pos(0, SCREEN_CY, WALL) * extrude(Circle(GLASS_RING_ID / 2 + RIB_T), GLASS_RING_H)
-    inner = Pos(0, SCREEN_CY, WALL) * extrude(Circle(GLASS_RING_ID / 2), GLASS_RING_H + 0.02)
-    return outer - inner
+def _pcb_ring():
+    """Locating ring on the front-shell inner face around the screen module's
+    Ø59.24 PCB disc (the glass is bonded to it, so locating the PCB locates the
+    screen). Full pocket height so it captures the PCB at its seated depth. The
+    bottom is opened for the connector tab, and the caller clips to the cavity
+    (the disc is only ~0.3 mm/side off the perimeter wall, which registers X —
+    this ring mostly survives as top/bottom arcs handling Y)."""
+    h = FRONT_POCKET_TOP - WALL
+    outer = Pos(0, SCREEN_CY, WALL) * extrude(Circle(TFT_RING_ID / 2 + RIB_T), h)
+    inner = Pos(0, SCREEN_CY, WALL) * extrude(Circle(TFT_RING_ID / 2), h + 0.02)
+    ring = outer - inner
+    # Open the ring across the connector tab (plus clearance) at the disc bottom.
+    ring -= Pos(0, SCREEN_CY - TFT_PCB_DIA / 2, WALL + h / 2) * Box(
+        TFT_TAB_W + 2 * FIT_CLEAR + 2 * RIB_T, 16.0, h + 1.0
+    )
+    return ring
 
 
 def _usb_cut(z):
@@ -332,7 +364,7 @@ def front_shell():
     # Pocket walls are CLIPPED to the cavity so the corner-overlap padding can't push
     # a wall past the perimeter and poke out the outer edge face.
     cav = _cavity_solid(T_FRONT)
-    solid += _glass_ring()
+    solid += _pcb_ring() & cav
     solid += _walls(TP_W, TP_H, TP_CXY, WALL, FRONT_POCKET_TOP, ["-x", "+y", "-y"]) & cav  # USB exits +X; bracketed inboard + top/bottom
     solid += _walls(SD_W, SD_H, SD_CXY, WALL, FRONT_POCKET_TOP, ["+x", "+y", "-y"]) & cav  # card exits -X (left perimeter)
     # Notch the pocket walls around the SIDE caps so their snap flange (which

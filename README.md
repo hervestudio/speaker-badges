@@ -3,14 +3,16 @@
 A 3D-printable, two-piece enclosure for an electronic event **speaker badge**,
 modeled parametrically in Python with [build123d](https://github.com/gumyr/build123d).
 
-Portrait shell, **54 × 105 × 14.5 mm**, with a round body bulge (Ø61) framing the
-screen. A webbing strap threads through a slot on the top face and loops around a
+Portrait shell, **64 × 124 × 14.5 mm** (v2: sized for the 2.1" screen, keeping
+v1's 54 × 105 proportions), with a round body bulge (Ø72) framing the screen.
+A webbing strap threads through a slot on the top face and loops around a
 drop-in wrap bar. USB-C exits the right edge, the micro SD slot the left edge, and
-three buttons sit on the front face on an arc following the screen's lower curve
+three buttons sit on the front face on an arc below the screen
 (through-holes + separately printed drop-in caps).
 
 ## Bill of materials
-- AMOLED 1.73" round touch display (Ø48.4 glass) + CO5300 adapter board
+- 2.1" round TFT 360×360 on its own round PCB (glass Ø55.92, AA Ø52.92,
+  PCB Ø59.24 + connector tab — module thicknesses assumed, confirm datasheet)
 - ESP32-S3 N16R8 devkit (28.2 × 64.4 × 4.8 mm)
 - LiPo 503040 (40 × 30 × 5 mm, 600 mAh)
 - TP4056 + 5 V boost, USB-C charge board
