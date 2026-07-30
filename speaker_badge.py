@@ -148,11 +148,16 @@ SD_SLOT_H = 3.0            # along Z
 # compact (<=4x4) switch behind it.
 BTN_HOLE_DIA = 7.0         # cap-stem through-hole (the visible opening)
 BTN_CAP_HEAD = 9.0         # proud cap head Ø (identical for all three)
-BTN_ARC_R = 42.0           # arc radius measured from the screen center (0, SCREEN_CY).
+BTN_ARC_R = 41.5           # arc radius measured from the screen center (0, SCREEN_CY).
                            # Wider than a pure visual scale of v1: the 2.1" module's
                            # PCB tab reaches y=-29.9, so the center button (and the
                            # switch behind it) must sit fully below the tab.
-BTN_ARC_ANG = 38.0         # side buttons sit this many degrees up from bottom
+BTN_ARC_ANG = 28.5         # side buttons sit this many degrees up from bottom.
+                           # Narrower than v1's 38° to compensate for the larger R:
+                           # neighbor spacing 2*R*sin(ANG/2) ~ 20.4 mm, matching
+                           # v1's tight cluster (20.2). Sides land at (±19.8,-28.5)
+                           # — switches (6x6) clear the PCB tab (|x|>16.8, and the
+                           # center trio sits fully below y=-29.9).
 BTN_FLANGE_CLEAR = 9.0     # pocket walls are notched to this Ø around the SIDE caps
                            # so their Ø8 snap flange (button_cap.py) clears — the SD
                            # +y wall otherwise grazes the left flange by ~0.7 mm
