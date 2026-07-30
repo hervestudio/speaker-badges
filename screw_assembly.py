@@ -37,6 +37,21 @@ def _inserts():
 
 
 def gen_step():
+    """The assembled badge, re-posed for review: standing upright on z=0 with the
+    strap header at the top and the screen facing the viewer (the shells' native
+    build frame lies flat with the screen face down)."""
+    # Bake the pose into each child: the STEP exporter re-roots the assembly and
+    # drops a transform left on the root Compound itself.
+    pose = Pos(0, 0, sb.H / 2) * Rotation(0, 0, 180) * Rotation(90, 0, 0)
+    posed = []
+    for child in _children():
+        moved = pose * child
+        moved.label = child.label
+        posed.append(moved)
+    return Compound(label="screw_assembly", children=posed)
+
+
+def _children():
     front = sb.front_shell()
     front.label = "front_shell"
     # Close the case by FLIPPING the back shell about Y (180°), as you would
@@ -62,7 +77,7 @@ def gen_step():
         cap = Pos(bx, by, -bc.HEAD_H) * bc.make_cap(center=(i == 0))
         cap.label = f"button_cap_{'center' if i == 0 else i}"
         children.append(cap)
-    return Compound(label="screw_assembly", children=children)
+    return children
 
 
 if __name__ == "__main__":
