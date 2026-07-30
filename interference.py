@@ -37,6 +37,23 @@ def main():
     else:
         print("  -> shells do NOT interfere.")
 
+    # Components (simplified placeholder bodies, seated) vs the closed shells:
+    # catches internal features poking into a module's real volume — this is
+    # what exposed the tall glass ring and the ESP-wall stubs.
+    import screw_assembly as sa
+    shells = front + back_assembled
+    print("\nComponent clearances (placeholder body vs shells):")
+    bad = 0
+    for part in sa._components():
+        inter = shells & part
+        pvol = inter.volume if inter else 0.0
+        flag = "OK" if pvol < 1e-6 else "OVERLAP!"
+        if pvol >= 1e-6:
+            bad += 1
+        print(f"  {part.label:15s} {pvol:10.4f} mm^3  {flag}")
+    print("  -> all components seat cleanly." if not bad
+          else f"  -> {bad} component(s) interfere with the shells.")
+
 
 if __name__ == "__main__":
     main()

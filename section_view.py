@@ -19,7 +19,9 @@ def gen_step():
     cy = sb.H / 2 - sb.SCREW_INSET
     slab = Pos(cx, cy, sb.TOTAL_T / 2) * Box(1.2, 12, sb.TOTAL_T + 2)
     out = []
-    for child in sa.gen_step().children:
+    # Slice the un-posed children: gen_step() re-poses the assembly upright for
+    # review, but this slab is positioned in the flat build frame.
+    for child in sa._children():
         piece = child & slab
         if piece.volume > 1e-6:
             piece.label = child.label

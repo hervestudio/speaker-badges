@@ -156,7 +156,10 @@ BACK_POCKET_TOP = T_BACK - POCKET_GAP
 
 GLASS_DIA = 48.4
 GLASS_RING_ID = GLASS_DIA + 0.8         # locating-ring inner diameter
-GLASS_RING_H = T_FRONT - WALL - POCKET_GAP   # ring stays short of the seam
+GLASS_RING_H = 2.0         # just under the 2.21 glass thickness: the ring only
+                           # centers the glass radially; any taller and it hits
+                           # the 50 mm adapter board seated behind the glass
+                           # (adapter mid-edges at ±25 overlap the ring annulus)
 
 # Module footprints (X, Y) and pocket centers (shared by both shells in XY)
 ESP_W, ESP_H, ESP_CXY = 28.2, 64.4, (0.0, 12.8)      # back layer; top registers on header ceiling (4.8 mm thick)
@@ -378,6 +381,15 @@ def back_shell():
     # the corner-overlap padding can't poke through the perimeter to the outside.
     cav = _cavity_solid(T_BACK)
     solid += _walls(ESP_W, ESP_H, ESP_CXY, WALL, BACK_POCKET_TOP, ["+x", "-x"]) & cav
+    # Trim the ESP walls' -y corner padding out of the battery zone: _walls pads
+    # wall ends by FIT_CLEAR + RIB_T (2.1 mm) but the ESP<->battery gap is only
+    # 1.3 mm, so the stubs would poke ~0.8 mm into the battery footprint. Cut
+    # them flush with the ESP clearance edge (keeps full corner support, leaves
+    # the battery side ribs at x=±21.3 untouched).
+    esp_wall_end = ESP_CXY[1] - ESP_H / 2 - FIT_CLEAR
+    solid -= Pos(0, esp_wall_end - 1.5, (WALL + BACK_POCKET_TOP) / 2) * Box(
+        2 * (ESP_W / 2 + FIT_CLEAR + RIB_T + 1.0), 3.0, BACK_POCKET_TOP - WALL
+    )
 
     # Battery side ribs (+x / -x). Built explicitly rather than via _walls, and
     # stopped ~4 mm ABOVE the bottom insert bosses so the ribs don't run down
