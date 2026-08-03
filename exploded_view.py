@@ -57,7 +57,6 @@ def gen_step():
 
     # Front layer
     parts.append(_box(sb.TP_W, sb.TP_H, 5.0, (*sb.TP_CXY, 42), "tp4056_boost"))
-    parts.append(_box(sb.SD_W, sb.SD_H, 4.0, (*sb.SD_CXY, 42), "sd_module"))
 
     # 2.1" TFT module: round carrier PCB (+ connector tab), glass above it
     pcb = Pos(0, SCY, 56) * Cylinder(sb.TFT_PCB_DIA / 2, sb.TFT_PCB_T)

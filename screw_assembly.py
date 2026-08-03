@@ -2,11 +2,12 @@
 the drop-in wrap bar, to check the lid countersink, shaft/insert engagement, and
 the bar seated in its cradle."""
 
-from build123d import Box, Compound, Cylinder, Plane, Pos, Rotation, mirror
+from build123d import Box, Compound, Cylinder, Plane, Pos, RectangleRounded, Rotation, extrude, mirror
 
 import button_cap as bc
 import insert as ins
 import m2_screw as ps
+import screw_cap as sc
 import speaker_badge as sb
 import wrap_bar as wb
 
@@ -74,8 +75,18 @@ def _children():
     # outer face (native z<0 side), the stem passes through the Ø7 hole. The
     # first button_centers() entry is the CENTER (flangeless) cap.
     for i, (bx, by) in enumerate(sb.button_centers()):
-        cap = Pos(bx, by, -bc.HEAD_H) * bc.make_cap(center=(i == 0))
+        # au repos, le plongeur porte le capuchon (face externe a cap_seat_z)
+        cap = Pos(bx, by, bc.cap_seat_z()) * bc.make_cap(center=(i == 0))
         cap.label = f"button_cap_{'center' if i == 0 else i}"
+        children.append(cap)
+        if sb.BTN_STYLE == "ring":
+            ring = Pos(bx, by, -(bc.RING_H - sb.BTN_RING_SEAT_DEPTH)) * bc.make_ring()
+            ring.label = f"button_ring_{i}"
+            children.append(ring)
+    # capuchons decoratifs colles sur les tetes de vis (dans leurs lamages)
+    for i, (cx, cy) in enumerate(_corners()):
+        cap = Pos(cx, cy, sb.SCREWCAP_SEAT_DEPTH) * Rotation(0, 180, 0) * sc.make_cap()
+        cap.label = f"screw_cap_{i}"
         children.append(cap)
     children += _components()
     return children
@@ -99,6 +110,13 @@ def _components():
         part.label = label
         return part
 
+    def _rbox(w, h, t, cx, cy, z0, label, r=1.5):
+        """Comme _box mais avec des coins arrondis (PCB reels — la TP4056 se
+        loge dans le coin arrondi de la cavite grace a eux)."""
+        part = Pos(cx, cy, z0) * extrude(RectangleRounded(w, h, r), t)
+        part.label = label
+        return part
+
     board_t, esp_t, bat_t = 4.0, 4.8, 5.0
     back_floor = sb.TOTAL_T - sb.WALL
 
@@ -117,10 +135,17 @@ def _components():
     return [
         glass,
         pcb,
-        _box(sb.TP_W, sb.TP_H, board_t, *sb.TP_CXY, sb.WALL, "tp4056_boost"),
-        _box(sb.SD_W, sb.SD_H, board_t, *sb.SD_CXY, sb.WALL, "sd_module"),
+        # largeur reduite a la poche resserree (cloison -x rapprochee de 1.5) :
+        # la carte reelle s'y ajuste serree entre -16.5 et +7.0
+        # PCB sureleve de 2.2 (il repose sur le muret support + le bord bas de
+        # l'ouverture USB) ; l'espace dessous loge connecteur et composants
+        _rbox(sb.TP_W - 1.5, sb.TP_H, 1.6, sb.TP_CXY[0] + 0.75,
+              sb.TP_CXY[1], sb.WALL + 2.2, "tp4056_boost"),
         _box(sb.ESP_W, sb.ESP_H, esp_t, *sb.ESP_CXY, back_floor - esp_t, "esp32_s3"),
-        _box(sb.BAT_W, sb.BAT_H, bat_t, *sb.BAT_CXY, back_floor - bat_t, "lipo_503040"),
+        # batterie reelle : legerement plus etroite que la poche centree de
+        # BAT_POCKET_W (34.5) entre les deux nervures symetriques
+        _box(sb.BAT_POCKET_W - 1.0, sb.BAT_H, bat_t, *sb.BAT_CXY,
+             back_floor - bat_t, "lipo_503040"),
     ]
 
 
