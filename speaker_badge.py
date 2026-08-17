@@ -24,6 +24,7 @@ Bill of materials (see component_layout.py for the in-case fit check):
 """
 
 import math
+import os
 
 from build123d import (
     Align,
@@ -46,9 +47,22 @@ from build123d import (
 )
 
 # --- Outer envelope (portrait, with body bulge around screen) ---
-W = 64.0                   # base width (X); floor set by the Ø59.24 screen PCB +
-                           # walls (~0.3 mm/side — snug, like v1's adapter fit)
-H = 124.0                  # body height (Y); scaled with the 2.1" screen to keep
+# TROIS VARIANTES (comparatif d'impression 2026-08-04/05), via BADGE_VARIANT :
+# - "short"  (defaut) : 64 x 124, l'originale — LiPo 503450 1000 mAh.
+# - "medium" : 66 x 134 — +10 mm EN HAUT seulement (l'ESP remonte se caler
+#   sous le header, l'ecran garde sa distance au bord BAS -> dans le repere
+#   centre le contenu absolu descend de 5) ; LiPo 505060 2000 mAh en paysage.
+# - "long"   : 66 x 144 — +10 mm en haut ET en bas, ecran/ESP inchanges ;
+#   LiPo 505060 en paysage. (BADGE_H_EXTRA=20 reste accepte comme alias.)
+VARIANT = os.environ.get("BADGE_VARIANT", "")
+if not VARIANT:
+    VARIANT = "long" if os.environ.get("BADGE_H_EXTRA") else "short"
+assert VARIANT in ("short", "medium", "long"), VARIANT
+H_EXTRA = {"short": 0.0, "medium": 10.0, "long": 20.0}[VARIANT]
+ABS_SHIFT = -5.0 if VARIANT == "medium" else 0.0  # decalage du contenu absolu
+W = 64.0 if VARIANT == "short" else 66.0  # base width (X); floor set by the
+                           # Ø59.24 screen PCB + walls (~0.3 mm/side, snug)
+H = 124.0 + H_EXTRA        # body height (Y); scaled with the 2.1" screen to keep
                            # the v1 proportions (H/W ≈ 1.94). The ESP + battery
                            # stack (95.7) now has slack in the 115.2 mm cavity.
 HEADER_H = 7.0             # solid top strip housing the strap slot + internal bar
@@ -57,7 +71,10 @@ BULGE_DIA = 72.0           # body bulges 4 mm proud of the base around the scree
                            # scaled with the screen; base still 64 (holds the PCB)
 CORNER_R = 4.0             # smoothing radius for outer silhouette
 WALL = 1.8                 # thinned from 2.0 in v1 for module clearance; kept
-T_FRONT = 7.25             # even split at the mid-plane (total 14.5 mm)
+T_FRONT = 8.75             # +1.5 le 2026-08-13 (revue montage : cablage trop
+                           # serre) — l'espace gagne est cote plan de joint, la
+                           # ou passent les fils. Le DOS reste a 7.25 : plus de
+                           # la moitie des coques arriere sont deja imprimees.
 T_BACK = 7.25
 TOTAL_T = T_FRONT + T_BACK
 CAVITY_TOP = H / 2 - HEADER_H   # cavity stops here; header above stays solid
@@ -68,7 +85,7 @@ CAVITY_TOP = H / 2 - HEADER_H   # cavity stops here; header above stays solid
 # AA / glass / PCB disc are concentric (side offsets are equal), so everything
 # centers on (0, SCREEN_CY); only the tab hangs below the disc.
 SCREEN_CUTOUT_DIA = 53.7   # covers the Ø52.92 active area + small margin
-SCREEN_CY = 8.0            # below lanyard, sized to fit bulge (v1 forehead ratio)
+SCREEN_CY = 8.0 + ABS_SHIFT  # below lanyard, sized to fit bulge (v1 forehead ratio)
 
 # --- Bezel: 45° chamfer around the screen opening ---
 # A chamfer (not a flat recess) so the front shell prints FACE-DOWN with no
@@ -138,7 +155,9 @@ BOSS_OD = 5.0              # ≥0.9 mm wall around the insert; merges into the p
 # about the vertical (Y) axis to close the case, which swaps X (left<->right), so
 # its cuts are mirrored in X and use native z = TOTAL_T - global z. (A flip, not a
 # reflection — you can't print a mirrored part.)
-USB_GZ = TOTAL_T / 2       # centered in the thickness (straddles the seam)
+USB_GZ = 7.25              # FIXE a l'ancien mi-plan (etait TOTAL_T/2 = 7.25 a
+                           # l'epoque symetrique) : le connecteur est lie a la
+                           # FACE AVANT, il ne doit pas suivre l'epaississement.
 USB_CX = 0.0               # ouverture CENTREE sur la tranche basse du badge.
                            # La carte TP4056 (horizontale, USB-C sur le long bord
                            # bas) se decale en consequence : son connecteur est a
@@ -215,7 +234,8 @@ SW_LEG_NOTCH = 5.6         # leg/wire opening width in the +-x cradle walls
 # z~4.3..5.9 with header pins behind): cradle/backer material encroaching on it
 # is trimmed above this z, leaving full-height walls only where safe.
 SW_TAB_KEEPOUT_X = 15.45   # tab half-width + 0.2 clearance
-SW_TAB_KEEPOUT_Y = -30.1   # keep-out applies above this y
+SW_TAB_KEEPOUT_Y = SCREEN_CY - 38.1  # keep-out applies above this y (suit
+                           # l'ecran : -30.1 en short/long, -35.1 en medium)
 SW_TAB_KEEPOUT_Z = 4.2     # ...and above this z (tab glass side starts ~4.3)
 
 # --- Internal retention (printed pockets/ribs; screen on a ledge + foam) ---
@@ -223,7 +243,10 @@ RIB_T = 1.6                # pocket / rib wall thickness
 FIT_CLEAR = 0.5            # clearance around each module
 POCKET_GAP = 0.8           # stop pocket walls short of the seam so the front and
                            # back shells' walls never butt together at the mid-plane
-FRONT_POCKET_TOP = T_FRONT - POCKET_GAP
+FRONT_POCKET_TOP = 7.25 - POCKET_GAP  # FIGE a la cote d'origine (etait
+                           # T_FRONT - POCKET_GAP) : la facade epaissie ne doit
+                           # PAS rehausser les parois TP/butees ecran/anneau —
+                           # le 1.5 mm gagne reste un degagement pour les fils.
 BACK_POCKET_TOP = T_BACK - POCKET_GAP
 
 # Screen module (2.1" TFT). Thicknesses are ASSUMED (the foot-position chart
@@ -241,21 +264,38 @@ TFT_RING_ID = TFT_PCB_DIA + 0.56        # PCB locating-ring inner diameter
 # Use a low-profile header or trim the tails.
 
 # Module footprints (X, Y) and pocket centers (shared by both shells in XY)
-ESP_W, ESP_H, ESP_CXY = 28.2, 64.4, (0.0, 22.3)      # back layer; top registers on header ceiling (4.8 mm thick)
-BAT_W, BAT_H, BAT_CXY = 40.0, 30.0, (0.0, -45.2)     # back layer; bottom rests on perimeter wall
-                                                     # (BAT_W = enveloppe nominale, informative)
-BAT_POCKET_W = 34.5        # largeur INTERIEURE entre les deux nervures batterie,
-                           # centree sur x=0 (revue annotee : la batterie reelle est
-                           # plus etroite que l'enveloppe nominale 503040)
+ESP_W, ESP_H = 28.2, 64.4
+# top registers on header ceiling (0.5 sous CAVITY_TOP) ; en Medium l'ESP
+# REMONTE avec le header (+10) pour liberer 50 mm en bas pour la batterie.
+# 22.3 = H/2 - 39.7 pour H=124 : la formule reproduit exactement le Short.
+ESP_CXY = (0.0, H / 2 - 39.7) if VARIANT == "medium" else (0.0, 22.3)
+# Batteries REELLES par variante (l'ancienne enveloppe 503040 etait fausse) :
+# - Short : LiPo 503450 (5 x 34 x 50, 1000 mAh) — occupe quasi tout l'espace
+#   bas (murs ESP raccourcis de 1.2 pour lui laisser 1 mm de jeu).
+# - Long : LiPo 505060 (5 x 50 x 60, 2000 mAh) posee en PAYSAGE (60 en X,
+#   50 en Y) : elle ne passe pas entre les futs d'inserts (Ø5 vers ±26), donc
+#   elle repose sur une ETAGERE juste au-dessus d'eux. Pas de nervures
+#   laterales (1.2 mm de jeu par flanc contre les murs peripheriques) ;
+#   languettes vers le HAUT pour rejoindre l'ESP. La 503450 y rentre aussi.
+if VARIANT != "short":
+    BAT_W, BAT_H = 60.0, 50.0
+    # assise 0.3 au-dessus du sommet des bosses des coins bas
+    BAT_CXY = (0.0, -(H / 2) + SCREW_INSET + BOSS_OD / 2 + 0.3 + BAT_H / 2)
+else:
+    BAT_W, BAT_H = 40.0, 50.0
+    BAT_CXY = (0.0, -(H / 2 - WALL - BAT_H / 2))     # bottom rests on perimeter wall
+BAT_POCKET_W = 34.5 if VARIANT == "short" else 60.5  # largeur INTERIEURE de la poche batterie
+                           # (Short : entre les deux nervures symetriques ;
+                           # Long : quasi mur-a-mur, sans nervures)
 TP_W, TP_H = 24.0, 18.0                              # cotes MESUREES de la carte reelle
-TP_CXY = (USB_CX - TP_USB_OFF, -50.9)                # front layer, bas-centre, HORIZONTALE :
+TP_CXY = (USB_CX - TP_USB_OFF, -(H / 2 - 11.1))      # front layer, bas-centre, HORIZONTALE :
                                                      # decalee de -5.5 pour que le connecteur
                                                      # tombe pile au centre du badge. Elle
                                                      # s'appuie contre la paroi BASSE (bord
                                                      # inferieur a -59.9, 0.3 du mur),
                                                      # connecteur vers le bas ; bracketee sur
                                                      # les deux flancs + le haut.
-SD_W, SD_H, SD_CXY = 17.8, 17.9, (-20.8, -41.5)      # empreinte de l'EX-poche SD : sert encore
+SD_W, SD_H, SD_CXY = 17.8, 17.9, (-20.8, -41.5 + ABS_SHIFT)  # empreinte de l'EX-poche SD : sert encore
                                                      # a positionner sa paroi +y, conservee
                                                      # comme butee basse de l'ecran
                                                      # (+y wall clears the PCB tab, as above)
@@ -385,7 +425,9 @@ def _switch_cradles():
     hw = SW_BODY / 2 + SW_CLEAR              # pocket half-width (3.15)
     ow = hw + RIB_T                          # outer half-width
     z0, z1 = WALL, SW_WALL_Z1
-    roof_z1 = T_FRONT - 0.1
+    roof_z1 = 7.15  # FIGE a la cote d'origine (etait T_FRONT - 0.1 : la
+    # facade epaissie a 8.75 aurait epaissi les plafonds de 1.5 — les cages
+    # restent identiques a la version validee, l'espace gagne reste aux fils)
     out = None
     for bx, by in button_centers():
         walls = Pos(bx, by, (z0 + z1) / 2) * Box(2 * ow, 2 * ow, z1 - z0)
@@ -394,6 +436,15 @@ def _switch_cradles():
         for sgn in (-1, 1):
             walls -= Pos(bx + sgn * (hw + RIB_T / 2), by, (z0 + z1) / 2) * Box(
                 RIB_T + 0.02, SW_LEG_NOTCH, z1 - z0 + 0.02)
+        # berceaux LATERAUX : murs +-x supprimes ENTIEREMENT (poteaux d'angle
+        # compris) — ils genaient l'insertion du switch (revue 2026-08-12).
+        # Le corps reste tenu par les murs +-y, la plaque d'appui et le
+        # plongeur centre dans le trou de facade. (Le central garde les siens :
+        # son mur +y ampute par la languette ecran les rend necessaires.)
+        if (bx, by) != button_centers()[0]:
+            for sgn in (-1, 1):
+                walls -= Pos(bx + sgn * (hw + RIB_T / 2), by, (z0 + z1) / 2) * Box(
+                    RIB_T + 0.04, 2 * ow + 0.04, z1 - z0 + 0.02)
         # solid backer plate behind the body (press-force reaction)
         roof = Pos(bx, by, (z1 + roof_z1) / 2) * Box(2 * ow, 2 * ow, roof_z1 - z1)
         cradle = walls + roof
@@ -402,18 +453,63 @@ def _switch_cradles():
         # -> soudure APRES insertion, bien plus simple. Le centre de la plaque
         # (ou s'appuie le corps) reste plein.
         for sgn in (-1, 1):
-            # la fente traverse le bord exterieur de la plaque (sinon il reste
-            # une lamelle fantome de 0.1 mm le long du bord)
-            cradle -= Pos(bx + sgn * 3.65, by, (z1 + roof_z1) / 2) * Box(
-                3.3, 7.0, roof_z1 - z1 + 0.2)
+            # fentes RETRECIES (revue casse 2026-08-05) : 2.7 x 5.6 au lieu de
+            # 3.3 x 7.0 — les pattes (a ±2.25) passent toujours, mais la plaque
+            # reste attachee aux murs par ses coins au lieu de finir en
+            # languette en porte-a-faux qui casse a l'appui. La fente traverse
+            # toujours le bord exterieur (x 2.6..5.3 > 4.75, pas de lamelle).
+            cradle -= Pos(bx + sgn * 3.95, by, (z1 + roof_z1) / 2) * Box(
+                2.7, 5.6, roof_z1 - z1 + 0.2)
+        if (bx, by) == button_centers()[0]:
+            # bouton CENTRAL : mur -y DOUBLE (3.2) — le mur +y, ampute par la
+            # languette ecran (z<=4.2), ne porte plus le plafond ; tout l'appui
+            # du switch transite par ce mur-ci.
+            cradle += Pos(bx, by - ow - RIB_T / 2, (z0 + z1) / 2) * Box(
+                2 * ow, RIB_T, z1 - z0)
+        # Renforts de plafond (ceinture-bretelles apres la casse du plafond
+        # central) — deux variantes :
+        #  - CENTRAL : piliers de fente historiques (version imprimee/validee,
+        #    on n'y touche pas) : pilier au milieu de chaque fente + patte de
+        #    liaison au plafond.
+        #  - LATERAUX (simplifies, revue 2026-08-13) : une EQUERRE par cote —
+        #    un poteau propre ENTIEREMENT au-dela du trou d'insertion Ø8.8
+        #    (x 4.5..6.0 > r 4.4 : assise pleine sur le plancher, plus de
+        #    porte-a-faux au bord du trou) + un pont plat au niveau du plafond
+        #    (z 5.6..7.15) traversant la fente et NOYE de 0.3 dans la masse du
+        #    plafond (x 2.3..6.0). Les pattes du switch sortent a ±2.25, le
+        #    pont a ±1.0 ne les gene pas ; la fente reste ouverte dessous.
+        if (bx, by) == button_centers()[0]:
+            for sgn in (-1, 1):
+                cradle += Pos(bx + sgn * 4.575, by, (z0 + roof_z1) / 2) * Box(
+                    2.85, 2.0, roof_z1 - z0)
+                cradle += Pos(bx + sgn * 2.875, by, (z1 + roof_z1) / 2) * Box(
+                    0.55, 2.0, roof_z1 - z1)
+        else:
+            for sgn in (-1, 1):
+                cradle += Pos(bx + sgn * 5.25, by, (z0 + z1 + 0.5) / 2) * Box(
+                    1.5, 2.0, z1 + 0.5 - z0)
+                cradle += Pos(bx + sgn * 4.15, by, (z1 + roof_z1) / 2) * Box(
+                    3.7, 2.0, roof_z1 - z1)
         out = cradle if out is None else out + cradle
     # trim whatever encroaches on the screen PCB tab envelope
-    out -= Pos(0, SW_TAB_KEEPOUT_Y + 60, SW_TAB_KEEPOUT_Z + (T_FRONT - SW_TAB_KEEPOUT_Z) / 2 + 0.5) * Box(
-        2 * SW_TAB_KEEPOUT_X, 120, T_FRONT - SW_TAB_KEEPOUT_Z + 1.0)
-    # ...and on the TP4056 / SD module envelopes (+0.2 clearance): the side
-    # cradles' -y corner posts otherwise dip ~0.7 mm into the board tops
-    for w, h, (cx, cy) in ((TP_W, TP_H, TP_CXY), (SD_W, SD_H, SD_CXY)):
-        out -= Pos(cx, cy, T_FRONT / 2) * Box(w + 0.4, h + 0.4, T_FRONT + 1.0)
+    ko_z_mid = SW_TAB_KEEPOUT_Z + (T_FRONT - SW_TAB_KEEPOUT_Z) / 2 + 0.5
+    ko_z_h = T_FRONT - SW_TAB_KEEPOUT_Z + 1.0
+    out -= Pos(0, SW_TAB_KEEPOUT_Y + 60, ko_z_mid) * Box(
+        2 * SW_TAB_KEEPOUT_X, 120, ko_z_h)
+    # Berceau CENTRAL : la languette ecran interdit toute matiere haute sur
+    # son cote +y. Au lieu de necks residuels trop fins (revues impression
+    # 2026-08-05), on coupe TOUT (murs ET plafond) au-dessus de z=4.2 des la
+    # ligne des fentes (y rel +2.8) : le plafond devient un U ancre sur trois
+    # cotes pleins (mur -y double + murs +-x), le cote +y n'est qu'un muret
+    # bas z<=4.2. Aucune paroi restante sous 1.6 mm.
+    out -= Pos(0, (SCREEN_CY - 38.7) + 60, ko_z_mid) * Box(
+        2 * (SW_BODY / 2 + SW_CLEAR + RIB_T + 0.2), 120, ko_z_h)
+    # ...and on the TP4056 envelope (+0.2 clearance): the center cradle's -y
+    # wall otherwise dips into the board top. (La decoupe SD a ete SUPPRIMEE
+    # avec le module — elle charcutait le berceau gauche pour rien ; revue
+    # 2026-08-05 : les deux berceaux lateraux sont de nouveau identiques.)
+    out -= Pos(TP_CXY[0], TP_CXY[1], T_FRONT / 2) * Box(
+        TP_W + 0.4, TP_H + 0.4, T_FRONT + 1.0)
     return out
 
 
@@ -480,8 +576,11 @@ def front_shell():
     # M2 clearance through-holes & 90° head countersinks + lamage du capuchon
     for x, y in _corners():
         solid -= Pos(x, y, 0) * extrude(Circle(M2_CLEAR_DIA / 2), T_FRONT)
-        # countersink: cone wide (Ø4.4) at the screen face, narrowing to the
-        # clearance hole at CSK_DEPTH — a flush conical seat for the flat head.
+        # countersink A LA FACE, comme a l'origine : le cone s'imprime sur le
+        # plateau (siege net et solide). La version "tete renfoncee" imprimait
+        # le cone en surplomb au-dessus d'un puits -> siege affaisse, la tete
+        # passait au travers (revue impression 2026-08-13). Avec la facade a
+        # 8.75, utiliser des vis M2x12 (prise ~3.25 mm dans l'insert).
         solid -= Pos(x, y, 0) * Cone(
             CSK_DIA / 2, M2_CLEAR_DIA / 2, CSK_DEPTH,
             align=(Align.CENTER, Align.CENTER, Align.MIN),
@@ -511,16 +610,23 @@ def front_shell():
     zmid = (WALL + FRONT_POCKET_TOP) / 2
     zh = FRONT_POCKET_TOP - WALL
     wall_face_l = tp_l + 1.0  # etait tp_l - 0.5 : rapprochee de 1.5
-    solid += (Pos(wall_face_l - RIB_T / 2, TP_CXY[1], zmid)
-              * Box(RIB_T, TP_H + 2 * RIB_T, zh)) & cav
-    solid += (Pos(tp_r + FIT_CLEAR + RIB_T / 2, TP_CXY[1], zmid)
-              * Box(RIB_T, TP_H + 2 * RIB_T, zh)) & cav
+    # parois EPAISSIES a 2.8 (etaient RIB_T=1.6, jugees trop fragiles au
+    # montage 2026-08-13) — l'epaississement part vers l'EXTERIEUR, les faces
+    # interieures ne bougent pas (la carte garde ses 23.5 mm pile)
+    TPW_T = 2.8
+    solid += (Pos(wall_face_l - TPW_T / 2, TP_CXY[1], zmid)
+              * Box(TPW_T, TP_H + 2 * RIB_T, zh)) & cav
+    solid += (Pos(tp_r + FIT_CLEAR + TPW_T / 2, TP_CXY[1], zmid)
+              * Box(TPW_T, TP_H + 2 * RIB_T, zh)) & cav
     # Support sous la carte : un muret dont la hauteur egale EXACTEMENT la
     # distance plancher -> bas de l'ouverture USB (parametrique : 2.2 mm), pour
     # que la carte repose a plat (muret a l'arriere + bord bas de l'ouverture
     # cote connecteur) sans jamais etre de travers. Place sous la bande du bord
     # haut de la carte (zone nue du PCB), juste sous les freins.
-    usb_bot_h = (USB_GZ - USB_H / 2) - WALL  # 2.2
+    usb_bot_h = (USB_GZ - USB_H / 2) - WALL - 0.5  # 2.2 - 0.5 : abaisse de
+    # 1.5 le 2026-08-12 (la carte reposait trop haut), puis remonte de 1.0 le
+    # 2026-08-13 (revue Romain : +1 de haut) — il reste 0.5 de jeu sous la
+    # carte, elle ne peut plus s'affaisser qu'a peine
     # (descendu de 5 mm vers le port USB pour degager la zone de soudure)
     solid += (Pos(-4.75, tp_t - 5.8, WALL + usb_bot_h / 2)
               * Box(19.0, 1.6, usb_bot_h)) & cav
@@ -533,17 +639,59 @@ def front_shell():
         solid += (Pos(x0 + 2.5, tp_t + FIT_CLEAR + RIB_T / 2 - 0.5, zmid)
                   * Box(5.0, RIB_T, zh)) & cav
     # Ex-poche SD : seule la paroi +y est conservee — elle sert de butee basse
-    # a l'ecran (module SD abandonne, fente laterale supprimee).
+    # a l'ecran (module SD abandonne, fente laterale supprimee). SYMETRISEE
+    # (revue 2026-08-05) : la meme butee est ajoutee en miroir cote +x, sinon
+    # l'ecran ne s'appuyait en bas que d'un cote.
     solid += _walls(SD_W, SD_H, SD_CXY, WALL, FRONT_POCKET_TOP, ["+y"]) & cav
+    solid += _walls(SD_W, SD_H, (-SD_CXY[0], SD_CXY[1]), WALL, FRONT_POCKET_TOP,
+                    ["+y"]) & cav
+    # Entailles PASSE-FILS aux extremites exterieures des deux butees
+    # (demande Romain 2026-08-12, nettoyees 2026-08-13) : l'ecran ne
+    # s'appuie que sur sa portion centrale (languette, |x|<15), le bout
+    # exterieur ne portait rien. Coupe PROPRE :
+    #  - de PILE au flanc des berceaux lateraux (x=24.55, aucun moignon ;
+    #    les berceaux sont re-ajoutes APRES et ne peuvent etre entames)
+    #    jusqu'au-dela du mur peripherique, mais BORNEE a la cavite (& cav) :
+    #    ni le mur ni le plancher ne sont marques, la coupe ne retire que la
+    #    butee elle-meme ;
+    #  - au ras du plancher (z demarre a WALL), 0.2 de marge au-dessus du
+    #    sommet de la butee seulement.
+    stop_y = SD_CXY[1] + SD_H / 2 + FIT_CLEAR + RIB_T / 2
+    for sx in (-1, 1):
+        solid -= (Pos(sx * 29.0, stop_y, WALL + (zh + 0.2) / 2) * Box(
+            8.9, RIB_T + 2.0, zh + 0.2)) & cav
     # Switch cradles + backer plates behind the three cap holes (the old snap-
     # flange clearance notches are gone: the new caps have no flange). First
     # open the switch envelopes through the TP/SD pocket walls, then add the
     # cradles, which rebuild clean walls around the openings.
+    # Assise pour la languette STRIPBOARD (bus GND + les 2 ponts diviseurs
+    # 100k soudes dessus, resistances debout) : decoupe conseillee 5 bandes x
+    # 8 trous (12.7 x 20.3, plaque 1.6). Cadre a rebords de 1.2, 2.2 de haut,
+    # interieur avec 0.6 de jeu ; deux echancrures passe-fils sur les flancs.
+    # Zone libre bas-droit de la facade (a gauche, les murs TP encombrent).
+    # Ajoute AVANT le keep-out des switchs : il retaille le cadre au besoin.
+    # allonge a 8 trous (revue montage 2026-08-11) : 20.3 + 0.7 de jeu
+    STRIP_W, STRIP_H = 13.4, 21.0
+    STRIP_CX, STRIP_CY = 16.4, -(H / 2 - 15.5)
+    rim = Pos(STRIP_CX, STRIP_CY, WALL + 1.6) * Box(STRIP_W + 2.4, STRIP_H + 2.4, 3.2)
+    rim -= Pos(STRIP_CX, STRIP_CY, WALL + 1.6) * Box(STRIP_W, STRIP_H, 3.4)
+    for sgn in (-1, 1):  # echancrures pour sortir les fils a plat (traversent
+        # toujours le sommet du cadre rehausse)
+        rim -= Pos(STRIP_CX + sgn * (STRIP_W / 2 + 0.6), STRIP_CY,
+                   WALL + 1.85) * Box(1.5, 5.0, 3.8)
+    solid += rim & cav
+
     solid -= _switch_keepouts()
     solid += _switch_cradles() & cav
 
     # Edge ports (this shell's portion; local z = global z)
-    solid -= _usb_cut(USB_GZ)
+    # Ouverture USB : trou de 9 x 3.75. Le bord BAS reste a sa cote (4.0 :
+    # il sert de registre a la carte TP4056), le haut monte a 7.75 — +0.5 mm
+    # de jeu en epaisseur pour la prise, un peu dure a passer a 3.25 (revue
+    # impression 2026-08-13). Le linteau s'imprime toujours en pont de 9 mm.
+    solid -= Pos(USB_OPEN_CX, -H / 2, USB_GZ - USB_H / 4 + 0.25) * extrude(
+        Plane.XZ * RectangleRounded(USB_W, USB_H / 2 + 0.5, 1.0), WALL * 2, both=True
+    )
 
     # Three button cap holes on an arc below the screen (caps drop in — button_cap.py).
     solid -= _button_holes()
@@ -574,9 +722,24 @@ def back_shell():
     solid = _shell_body(T_BACK)
 
     cavity_depth = T_BACK - WALL
+    # Renforts des futs (revue 2026-08-04) : croix de nervures fines autour de
+    # chaque boss — 2 branches se fondent dans le mur peripherique, 2 pointent
+    # vers l'interieur. Hauteur partielle (~2/3) : l'insert reste accessible
+    # par le plan de joint et les branches ne genent pas les composants.
+    GUSSET_T = 1.0
+    GUSSET_L = 6.0   # demi-longueur de la croix depuis l'axe du boss
+    GUSSET_H = 3.4
+    cav_for_gussets = _cavity_solid(T_BACK)
     for x, y in _corners():
         # Boss + blind hole for an M2 heat-set insert, pressed in from the seam.
         solid += Pos(x, y, WALL) * extrude(Circle(BOSS_OD / 2), cavity_depth)
+        cross = Pos(x, y, WALL + GUSSET_H / 2) * Box(2 * GUSSET_L, GUSSET_T, GUSSET_H)
+        cross += Pos(x, y, WALL + GUSSET_H / 2) * Box(GUSSET_T, 2 * GUSSET_L, GUSSET_H)
+        # les branches ne doivent pas entrer dans le volume batterie (en Long,
+        # la 505060 paysage descend jusqu'a 0.3 au-dessus des bosses)
+        cross -= Pos(BAT_CXY[0], BAT_CXY[1], (WALL + T_BACK) / 2) * Box(
+            BAT_POCKET_W + 0.6, BAT_H + 0.6, T_BACK - WALL + 0.2)
+        solid += cross & cav_for_gussets
         solid -= Pos(x, y, T_BACK - INSERT_HOLE_DEPTH) * extrude(
             Circle(INSERT_HOLE_DIA / 2), INSERT_HOLE_DEPTH + 0.01
         )
@@ -599,8 +762,11 @@ def back_shell():
     # them flush with the ESP clearance edge (keeps full corner support, leaves
     # the battery side ribs at x=±21.3 untouched).
     esp_wall_end = ESP_CXY[1] - ESP_H / 2 - FIT_CLEAR
-    solid -= Pos(0, esp_wall_end - 1.5, (WALL + BACK_POCKET_TOP) / 2) * Box(
-        2 * (ESP_W / 2 + FIT_CLEAR + RIB_T + 1.0), 3.0, BACK_POCKET_TOP - WALL
+    # (2026-08-04 : coupe etendue de 1.2 vers le haut — la batterie 503450 de
+    # 50 mm montait a 0.2 mm des bouts de murs en Short ; l'ESP ne perd que
+    # 0.7 mm d'appui a ses coins bas)
+    solid -= Pos(0, esp_wall_end - 0.9, (WALL + BACK_POCKET_TOP) / 2) * Box(
+        2 * (ESP_W / 2 + FIT_CLEAR + RIB_T + 1.0), 4.2, BACK_POCKET_TOP - WALL
     )
 
     # Battery side ribs (+x / -x). Built explicitly rather than via _walls, and
@@ -611,14 +777,25 @@ def back_shell():
     # ends just add footprint loops to the floor face — verified NOT through-holes.)
     # Revue annotee : les deux nervures restent SYMETRIQUES (centrees sur x=0),
     # ecartees pour laisser exactement BAT_POCKET_W (34.5) de largeur interieure.
-    rib_x = BAT_POCKET_W / 2 + RIB_T / 2
-    rib_top = BAT_CXY[1] + BAT_H / 2 + FIT_CLEAR + RIB_T          # +y end (matches _walls)
-    rib_bot = -(H / 2 - SCREW_INSET) + BOSS_OD / 2 + 4.0          # ~4 mm above the bosses
-    for sx in (-1, 1):
-        rib = Pos(sx * rib_x, (rib_top + rib_bot) / 2, (WALL + BACK_POCKET_TOP) / 2) * Box(
-            RIB_T, rib_top - rib_bot, BACK_POCKET_TOP - WALL
+    if VARIANT == "short":
+        # Short : nervures laterales de part et d'autre de la 503450
+        rib_x = BAT_POCKET_W / 2 + RIB_T / 2
+        rib_top = BAT_CXY[1] + BAT_H / 2 + FIT_CLEAR + RIB_T      # +y end (matches _walls)
+        rib_bot = -(H / 2 - SCREW_INSET) + BOSS_OD / 2 + 4.0      # ~4 mm above the bosses
+        for sx in (-1, 1):
+            rib = Pos(sx * rib_x, (rib_top + rib_bot) / 2, (WALL + BACK_POCKET_TOP) / 2) * Box(
+                RIB_T, rib_top - rib_bot, BACK_POCKET_TOP - WALL
+            )
+            solid += rib & cav
+    else:
+        # Long : la 505060 paysage est quasi mur-a-mur — pas de nervures
+        # laterales, mais une ETAGERE transversale sous son bord bas pour
+        # qu'elle repose au-dessus des bosses d'inserts (0.3 de jeu).
+        bat_bot = BAT_CXY[1] - BAT_H / 2
+        shelf = Pos(0, bat_bot - RIB_T / 2, (WALL + BACK_POCKET_TOP) / 2) * Box(
+            40.0, RIB_T, BACK_POCKET_TOP - WALL
         )
-        solid += rib & cav
+        solid += shelf & cav
 
     # --- Corrections (revue annotee 2026-07-31) ---
     esp_wx = ESP_W / 2 + RIB_T / 2                        # 14.9 (murs ESP +-x, clear=0)
@@ -668,6 +845,15 @@ def gen_step():
 
 
 if __name__ == "__main__":
+    import subprocess
+    import sys
+
     from build123d import export_step
-    export_step(gen_step(), "speaker_badge.step")
-    print("wrote speaker_badge.step")
+    suffix = "" if VARIANT == "short" else f"_{VARIANT}"
+    export_step(gen_step(), f"speaker_badge{suffix}.step")
+    print(f"wrote speaker_badge{suffix}.step")
+    if VARIANT == "short" and not os.environ.get("BADGE_VARIANT"):
+        # regenere aussi les variantes Medium et Long en sous-processus
+        for v in ("medium", "long"):
+            subprocess.run([sys.executable, __file__],
+                           env={**os.environ, "BADGE_VARIANT": v}, check=True)

@@ -145,7 +145,8 @@ def _components():
         # batterie reelle : legerement plus etroite que la poche centree de
         # BAT_POCKET_W (34.5) entre les deux nervures symetriques
         _box(sb.BAT_POCKET_W - 1.0, sb.BAT_H, bat_t, *sb.BAT_CXY,
-             back_floor - bat_t, "lipo_503040"),
+             back_floor - bat_t,
+             "lipo_505060" if sb.H_EXTRA else "lipo_503450"),
     ]
 
 

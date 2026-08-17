@@ -8,3 +8,6 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Snapshots CAD (artefacts de revue, regenerables)
+.snapshots/

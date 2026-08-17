@@ -53,7 +53,7 @@ def gen_step():
 
     # Back layer
     parts.append(_box(sb.ESP_W, sb.ESP_H, 5.0, (*sb.ESP_CXY, 26), "esp32_s3"))
-    parts.append(_box(sb.BAT_W, sb.BAT_H, 5.0, (*sb.BAT_CXY, 26), "lipo_503040"))
+    parts.append(_box(sb.BAT_W, sb.BAT_H, 5.0, (*sb.BAT_CXY, 26), "lipo_503450"))
 
     # Front layer
     parts.append(_box(sb.TP_W, sb.TP_H, 5.0, (*sb.TP_CXY, 42), "tp4056_boost"))
