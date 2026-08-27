@@ -199,8 +199,11 @@ BTN_CAP_HEAD = 13.5        # cap head Ø (identical for all three; 1.5x the v2 �
 BTN_RING_SEAT_DIA = 16.7   # lamage de centrage (anneau Ø16.5 + 0.1/cote)
 BTN_RING_SEAT_DEPTH = 0.3  # laisse 1.5 mm de paroi sous le lamage
 # Style RETENU (revue 2026-07-31) : "flush" — pas de collerette, lamage Ø14 x 1.0
-# directement dans la paroi (anneau restant 0.8) + tete amincie a 1.2 qui ne
-# depasse que de ~0.55 mm de la facade (bord arrondi, aucune prise d'arrachement).
+# directement dans la paroi (anneau restant 0.8). Tete epaissie a 1.4 (revues
+# 2026-08-26, prise pour decoller du plateau sans trop depasser). Logement du
+# plongeur a 1.3 (choix Romain) : saillie theorique ~0.3 si le plongeur ne
+# depasse que de 1.4 (clic ecrase — voir button_cap.py), davantage si le
+# plongeur reel est plus long.
 # L'alternative "ring" (puits a collerette rapportee) reste disponible via ce
 # parametre — voir compare_buttons.py pour le comparatif.
 BTN_STYLE = "flush"

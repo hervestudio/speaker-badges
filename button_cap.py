@@ -55,6 +55,18 @@ def _smiley():
     return ring + eyes
 
 
+CHEVRON_OPT_Y = -0.25               # correction OPTIQUE (revues impression
+                                    # 2026-08-26) : boite englobante centree
+                                    # (-1.85..+1.85) MAIS le chevron parait
+                                    # decale vers le cote ouvert (le recouvre-
+                                    # ment des bras a l'apex retire de la
+                                    # masse en pointe, le centre visuel tire
+                                    # vers les extremites). Correction vers la
+                                    # POINTE (y negatif — le +0.35 vers le
+                                    # cote ouvert du 1er essai AGGRAVAIT).
+                                    # Suit la rotation 180° du bouton oppose.
+
+
 def _chevron():
     """Design Figma 4147-1410/1413 : chevron ∨ a bouts et pointe ARRONDIS,
     IDENTIQUE pour les deux boutons lateraux — deux slots (stadiums)
@@ -67,7 +79,7 @@ def _chevron():
         arm = (Pos((x0 + x1) / 2, (y0 + y1) / 2)
                * Rotation(0, 0, ang) * SlotCenterToCenter(sep, 1.4))
         arms = arm if arms is None else arms + arm
-    return arms
+    return Pos(0, CHEVRON_OPT_Y) * arms
 
 
 def _icon_cut(profile, dome=True):
@@ -114,23 +126,46 @@ def make_ring():
     return ring
 
 
-# Variante "flush" (option 2) : tete amincie, nub raccourci — le sommet ne
-# depasse la facade que de ~0.55 mm, sans collerette (lamage Ø14 x 1.0).
-FLUSH_HEAD_H = 1.2
-FLUSH_NUB_H = 0.7                   # manchon raccourci (revue impression : a 1.0 il
-FLUSH_RECESS_D = 0.85               # butait sur le corps AVANT le declic). Enserre
-                                    # 0.85 mm de plongeur et s'arrete a 0.55 au-dessus
-                                    # du corps : course de 0.25 + 0.3 de marge.
+# Variante "flush" (option 2) : nub raccourci, sans collerette (lamage
+# Ø14 x 1.0). Tete 1.2 -> 1.4 (revues impression 2026-08-26 : a 1.9 total le
+# capuchon etait impossible a attraper pour le decoller du plateau ; l'essai
+# a 2.2 etait trop epais — juste milieu de Romain, d'abord 1.5 puis 1.4).
+# Le sommet depasse la facade de ~0.6 mm ; le lamage ne peut pas
+# s'approfondir (paroi 1.8, anneau restant 0.8) et le manchon/recess sont
+# figes par le plongeur.
+FLUSH_HEAD_H = 1.4
+FLUSH_NUB_H = 0.9                   # manchon RALLONGE de +0.2 (revues Romain
+FLUSH_RECESS_D = 1.5                # 2026-08-26/27 : le logement s'etend vers
+                                    # l'ARRIERE, la matiere cote face reste a 0.8 —
+                                    # au test v9, 1.5 creuse cote face rendait
+                                    # l'icone "beaucoup trop fine" ; manchon 1.7
+                                    # (v10) puis 1.2 (serie 100) trop longs au
+                                    # montage, redescendu a 0.9 pour la plaque de
+                                    # reprise 30. Engagement du plongeur 1.5 mm.
+                                    # Si le manchon bute sur le corps du switch
+                                    # avant le declic, raccourcir nub et recess du
+                                    # meme montant. Historique recess : 0.85, 1.0,
+                                    # 1.5, 1.3, 2.3, 1.8.
 
 
-INLAY_DEPTH = 0.4                   # incrustation = DEUX couches de 0.2 :
-                                    # la face garde 0.4 d'epaisseur de couleur
-                                    # (opaque, le fonce ne transparait pas) et
-                                    # la meme piece sert aux DEUX recettes,
-                                    # 1 ou 2 changements de filament.
+INLAY_DEPTH = 0.4                   # incrustation = DEUX couches de 0.2
+                                    # (profil 0.20 Standard "orca-like",
+                                    # revues Romain 2026-08-26) : couleur =
+                                    # couches 1-2, pause (changement NOIR)
+                                    # avant la couche 3, pont noir rigide 0.2.
+                                    # La reference qualite est le PREMIER test
+                                    # Orca : lignes ~0.40 uniformes en couche
+                                    # 1, elefant_foot_compensation 0 (0.15
+                                    # elargissait l'icone de 0.15/cote),
+                                    # motif "monotonicline". Les essais 0.08
+                                    # (0.28) et 0.16 (0.36) etaient moins
+                                    # bien definis. Un remplissage noir
+                                    # AFFLEURANT reste impossible sans AMS
+                                    # (une seule matiere par couche).
 
 
-def make_cap(center=False, style=None, icon=None, dome=True, inlay=False):
+def make_cap(center=False, style=None, icon=None, dome=True, inlay=False,
+             recess_d=None, back_mark=False):
     """Cap for the three buttons. `style`: None = suit sb.BTN_STYLE (defaut
     du projet), sinon "ring" ou "flush". `icon`: None = smiley pour le
     central, chevron ∨ pour les lateraux (designs Figma 4147-1405/1410/1413,
@@ -140,14 +175,14 @@ def make_cap(center=False, style=None, icon=None, dome=True, inlay=False):
     calotte, s'imprime face contre plateau SANS SUPPORTS (la gravure cote
     plateau sort nette), pour la serie de 40.
     `inlay=True` (plat uniquement) : icone INCRUSTEE EN NEGATIF — gravee
-    de DEUX couches (0.4) dans la face, imprimee face contre plateau,
-    couches de 0.2. Deux recettes au choix :
-      - 1 SEUL changement (economie de pause, revue Romain 2026-08-14) :
-        couches 1-2 = couleur capuchon, changement debut couche 3, NOIR
-        JUSQU'AU BOUT (icone + corps + nub). Tranche et dos noirs, face
-        couleur, icone noire.
-      - 2 changements (capuchon entierement couleur) : couches 1-2 couleur,
-        noir couches 3-4, retour couleur debut couche 5."""
+    de INLAY_DEPTH (0.28) dans la face, imprimee face contre plateau au
+    profil 0.08mm High Quality (premiere couche 0.2 + 0.08). Recette
+    1 SEUL changement (revue Romain 2026-08-14) : couches 1-2 = couleur
+    capuchon, changement debut couche 3, NOIR JUSQU'AU BOUT (icone +
+    corps + nub). Tranche et dos noirs, face couleur, icone noire.
+    `recess_d` : surcharge la profondeur du logement du plongeur (tests
+    comparatifs). `back_mark=True` : petit point creuse au DOS de la tete
+    pour distinguer une variante apres decollage (invisible monte)."""
     style = style or sb.BTN_STYLE
     icon = icon or ("smiley" if center else "chevron")
     if icon in ("up", "down"):
@@ -159,9 +194,12 @@ def make_cap(center=False, style=None, icon=None, dome=True, inlay=False):
     if inlay and dome:
         raise ValueError("inlay=True exige dome=False (face plate)")
     cap = (_dome() + head + nub) if dome else (head + nub)
-    recess_d = FLUSH_RECESS_D if style == "flush" else RECESS_DEPTH
+    if recess_d is None:
+        recess_d = FLUSH_RECESS_D if style == "flush" else RECESS_DEPTH
     cap -= Pos(0, 0, head_h + nub_h - recess_d) * Cylinder(
         RECESS_DIA / 2, recess_d + 0.02, align=MIN)
+    if back_mark:
+        cap -= Pos(4.5, 0, head_h - 0.4) * Cylinder(0.6, 0.42, align=MIN)
     profile = _smiley() if icon == "smiley" else (
         _chevron() if icon == "chevron" else None)
     if profile is not None:
