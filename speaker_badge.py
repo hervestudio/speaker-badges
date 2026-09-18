@@ -133,6 +133,17 @@ SCREW_INSET = 7.0          # rentre de 4.0 -> 7.0 (revue capuchons decoratifs) :
                            # au bord). La poche batterie resserree (34.5) laisse
                            # largement la place aux bosses d'inserts plus interieurs.
                            # Bonus : plus de matiere autour du fraisage (hoop stress).
+# --- Membranes sacrificielles (revue Romain 2026-09-18) ---
+# Les deux lamages de la facade (capuchons de vis, boutons "flush") sont
+# fermes par une membrane d'UNE couche (0.2) : le plafond du lamage ponte
+# alors sur un disque plein au lieu d'un anneau au-dessus du vide. A percer
+# apres impression. BADGE_NO_MEMBRANE=1 les supprime : les lamages debouchent
+# directement (rien a percer, mais le plafond doit etre pontee en l'air ->
+# reserver aux profils qui gerent bien les ponts, ou accepter un peu de
+# bavure sous la premiere couche du lamage).
+NO_MEMBRANE = bool(os.environ.get("BADGE_NO_MEMBRANE"))
+MEMBRANE_T = 0.0 if NO_MEMBRANE else 0.2
+
 # --- Capuchons decoratifs de vis (facon mockup : cercle + carre en relief) ---
 # Colles par-dessus les tetes M2 apres montage ; un lamage de centrage Ø10.2
 # est fraise dans la face avant autour de chaque fraisage de vis.
@@ -240,6 +251,44 @@ SW_TAB_KEEPOUT_X = 15.45   # tab half-width + 0.2 clearance
 SW_TAB_KEEPOUT_Y = SCREEN_CY - 38.1  # keep-out applies above this y (suit
                            # l'ecran : -30.1 en short/long, -35.1 en medium)
 SW_TAB_KEEPOUT_Z = 4.2     # ...and above this z (tab glass side starts ~4.3)
+
+# --- Interrupteur d'alimentation a glissiere (revue Romain 2026-09-16) ---
+# Post-mortem event : sans coupure physique, la veille du boost (~0.3 mA) a
+# vide les LiPo jusqu'a la decharge profonde. Ajout d'une glissiere TRU
+# TC-R13-603C-05 (SPDT 3A 125VAC, platine 19.5x8, corps 5.8 sous platine,
+# fente panneau 6x3.5, trous Ø2.6 entraxe 14.3) en serie sur B+ entre la
+# cellule et le TP4056 : OFF = zero courant. Montage au travers de la face
+# ARRIERE, dans la bande libre le long de l'ESP, cote -x natif (revue Romain
+# 2026-09-16 : c'est le cote BOUTONS, 3 fils seulement — le +x porte l'alim
+# TP4056 + la nappe SPI ecran). La coque dos etant retournee x->-x a la
+# fermeture, le switch tombe cote DROIT du badge ferme vu de face.
+# Verification 2026-09-16 (variante medium) : bande libre |x| 15.7..31.2,
+# platine y 30.1..50.0 entre le haut de la batterie (-7.2) et le gousset du
+# coin haut (y>54) ; en face, l'anneau ecran (R31.5 centre y=3) s'arrete a
+# y~25.5 a cette abscisse -> le corps qui depasse le joint de ~0.9 mm tombe
+# dans la cavite de routage des fils de la facade. Zone antenne ESP (y>51.5)
+# evitee. La platine est ENCASTREE de 0.5 dans la paroi (elle affleure, le
+# levier garde ~2.1 mm de saillie) et retenue par deux PIONS Ø2.35 dans ses
+# trous Ø2.6, a ecraser au fer apres pose : la paroi restante (1.3 mm) est
+# trop fine pour visser, et les efforts de manoeuvre sont repris par les
+# flancs du lamage, pas par les pions.
+PSW_CXY = (-21.5, 40.0)    # centre, coords natives coque dos (cote boutons)
+PSW_FLANGE_W = 8.4         # lamage platine : 8 + 0.4 de jeu
+PSW_FLANGE_L = 19.9        # 19.5 + 0.4
+PSW_FLANGE_R = 4.0         # bouts arrondis de la platine
+PSW_SEAT_DEPTH = 0.5       # encastrement (paroi restante 1.3)
+PSW_SLOT_W = 3.7           # fente levier 3.5 + 0.2 (travers)
+PSW_SLOT_L = 6.2           # 6.0 + 0.2 (sens de la course)
+PSW_HOLE_PITCH = 14.3      # entraxe des trous Ø2.6 de la platine
+PSW_PIN_DIA = 2.0          # pion de retenue (trou platine Ø2.6). Ø reduit de
+                           # 2.35 -> 2.0 (revue Romain 2026-09-16) : le corps
+                           # du switch (~11.6 mm) frole les trous a 14.3
+                           # d'entraxe — a 2.0 il reste ~0.35 mm de jeu, et
+                           # l'ecrasement au fer comble le jeu dans le trou
+PSW_PIN_PROUD = 1.0        # depassement au-dessus de la platine, a ecraser
+PSW_DISH_W = 5.7           # cuvette exterieure autour de la fente (prise du
+PSW_DISH_L = 8.2           # doigt) : stadium centre sur la fente...
+PSW_DISH_DEPTH = 0.6       # ...creusee de 0.6 dans la face arriere
 
 # --- Internal retention (printed pockets/ribs; screen on a ledge + foam) ---
 RIB_T = 1.6                # pocket / rib wall thickness
@@ -593,8 +642,9 @@ def front_shell():
         # le plafond du lamage ponte sur un disque plein (impression propre).
         # A percer apres impression (la pointe d'une vis M2 suffit).
         solid -= Pos(x, y, 0) * extrude(Circle(SCREWCAP_SEAT_DIA / 2), SCREWCAP_SEAT_DEPTH)
-        solid += Pos(x, y, SCREWCAP_SEAT_DEPTH) * extrude(
-            Circle(CSK_DIA / 2 + 0.2), 0.2)
+        if MEMBRANE_T:
+            solid += Pos(x, y, SCREWCAP_SEAT_DEPTH) * extrude(
+                Circle(CSK_DIA / 2 + 0.2), MEMBRANE_T)
 
     # Screen locating ring + front-layer module pockets (walls stop short of seam).
     # Pocket walls are CLIPPED to the cavity so the corner-overlap padding can't push
@@ -711,8 +761,9 @@ def front_shell():
         # A PERCER au tournevis/cutter apres impression, avant d'inserer les switches.
         for bx, by in button_centers():
             solid -= Pos(bx, by, 0) * extrude(Circle(BTN_FLUSH_CB_DIA / 2), BTN_FLUSH_CB_DEPTH)
-            solid += Pos(bx, by, BTN_FLUSH_CB_DEPTH) * extrude(
-                Circle(BTN_HOLE_DIA / 2 + 0.2), 0.2)
+            if MEMBRANE_T:
+                solid += Pos(bx, by, BTN_FLUSH_CB_DEPTH) * extrude(
+                    Circle(BTN_HOLE_DIA / 2 + 0.2), MEMBRANE_T)
 
     # Top-face strap slot + wrap-bar cradle
     solid = _add_strap_mount(solid, T_FRONT)
@@ -829,6 +880,35 @@ def back_shell():
     # (encoche USB supprimee de la coque arriere — revue impression : le
     # connecteur n'affleure que sur la moitie avant, l'encoche arriere ne
     # faisait qu'un trou inutile.)
+
+    # Interrupteur d'alimentation R13-603 (voir bloc PSW_* pour la revue) :
+    # lamage de platine + fente de levier + pions de retenue. Medium
+    # uniquement (variante de la serie 40 badges) — Short/Long n'ont pas ete
+    # verifies pour les degagements et restent sans interrupteur.
+    # BADGE_NO_SWITCH=1 : coque medium SANS interrupteur (dos d'origine),
+    # exportee a part en speaker_badge_medium_no_switch.step.
+    if VARIANT == "medium" and not os.environ.get("BADGE_NO_SWITCH"):
+        px, py = PSW_CXY
+        # lamage d'encastrement de la platine dans la paroi arriere
+        solid -= Pos(px, py, WALL - PSW_SEAT_DEPTH) * extrude(
+            RectangleRounded(PSW_FLANGE_W, PSW_FLANGE_L, PSW_FLANGE_R),
+            PSW_SEAT_DEPTH + 0.01)
+        # fente du levier, debouchante (stadium, course le long de Y)
+        solid -= Pos(px, py, -0.05) * extrude(
+            RectangleRounded(PSW_SLOT_W, PSW_SLOT_L, PSW_SLOT_W / 2 - 0.2),
+            WALL)
+        # cuvette exterieure autour de la fente : le levier ne sort que de
+        # 1.6 mm de la face (3.4 - paroi restante) — la cuvette de 0.6 rend
+        # 2.2 mm de prise au bout du doigt et signale l'interrupteur
+        solid -= Pos(px, py, -0.05) * extrude(
+            RectangleRounded(PSW_DISH_W, PSW_DISH_L, 2.0),
+            PSW_DISH_DEPTH + 0.05)
+        # pions de retenue dans les trous de la platine (ecrases au fer)
+        for sy in (-1, 1):
+            solid += Pos(px, py + sy * PSW_HOLE_PITCH / 2,
+                         WALL - PSW_SEAT_DEPTH) * extrude(
+                Circle(PSW_PIN_DIA / 2),
+                PSW_SEAT_DEPTH + 0.5 + PSW_PIN_PROUD)
 
     # Top-face strap slot + wrap-bar cradle
     solid = _add_strap_mount(solid, T_BACK)
